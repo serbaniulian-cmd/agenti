@@ -289,13 +289,26 @@ textarea::placeholder{color:var(--muted)}
 .btn.ghost{background:none;border-color:transparent;color:var(--muted)}
 .sheet hr{border:0;border-top:1px solid var(--line);margin:18px 0 4px}
 .sec{font:700 16px/1.2 var(--display);margin:6px 0 4px}
+.sheet textarea{width:100%;max-height:none;min-height:96px;resize:vertical;font:16px/1.45 var(--body);color:var(--mist);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:14px;padding:12px 14px;outline:none;margin-bottom:8px;transition:border-color .2s,box-shadow .2s}
+.sheet textarea:focus{border-color:rgba(163,146,255,.6);box-shadow:0 0 0 4px rgba(163,146,255,.12)}
+.sheet textarea::placeholder{color:var(--muted)}
+#memList{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.mem{display:flex;align-items:flex-start;gap:8px;padding:8px 8px 8px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);font-size:14px;line-height:1.4}
+.mem span{flex:1;overflow-wrap:anywhere;padding-top:3px}
+.memx{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:none;border:0;color:var(--muted);cursor:pointer}
+.memx svg{width:15px;height:15px}
+.memx:hover{color:#ff9a9a;background:rgba(255,255,255,.06)}
+.memadd{display:flex;gap:8px}
+.memadd input{flex:1;margin:0}
+.memadd .btn{width:auto;margin:0;padding:0 16px}
+.body.streaming::after{content:"";display:inline-block;width:7px;height:1.05em;margin-left:3px;vertical-align:text-bottom;border-radius:2px;background:var(--ac,var(--lilac));animation:blink .9s steps(2,start) infinite}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .two .btn{margin-top:2px}
 .sheet-err{color:#ff9a9a;font-size:14px;margin:2px 0 6px}
 .sdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:7px;vertical-align:middle;transition:background .3s,box-shadow .3s}
 .sdot.ok{background:var(--planner);box-shadow:0 0 8px var(--planner)}
 .sdot.sync{background:var(--finance);animation:blink 1.2s ease-in-out infinite}
-.sdot.err{background:#ff7d7d}
+.sdot.bad{background:#ff7d7d}
 @keyframes blink{50%{opacity:.35}}
 
 @media (prefers-reduced-motion:reduce){
@@ -380,6 +393,17 @@ textarea::placeholder{color:var(--muted)}
     <input id="tokenInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
     <button class="btn primary" id="saveToken" type="button">Salvează parola</button>
     <hr>
+    <h3 class="sec">Despre mine</h3>
+    <p class="hint">Agenții primesc acest text la fiecare întrebare, ca să nu mai explici de la zero. Scrie cine ești, ce proiecte ai și cum vrei să primești răspunsurile.</p>
+    <textarea id="profileInput" rows="4" maxlength="1500" placeholder="De exemplu: Fac aplicații web simple pentru iPhone, scriu în română, prefer răspunsuri scurte, cu pași clari."></textarea>
+    <h3 class="sec">Memorie</h3>
+    <p class="hint">Scrie în chat „ține minte că…” sau adaugă aici. Agenții folosesc lista la fiecare întrebare.</p>
+    <div id="memList"></div>
+    <div class="memadd">
+      <input id="memInput" type="text" placeholder="Adaugă un lucru de ținut minte" maxlength="300">
+      <button class="btn" id="memAdd" type="button">Adaugă</button>
+    </div>
+    <hr>
     <h3 class="sec">Sincronizare între dispozitive</h3>
     <p class="hint" id="syncHint"></p>
     <div id="syncForm">
@@ -412,7 +436,7 @@ textarea::placeholder{color:var(--muted)}
 
 <script>
 const API_URL = "https://agentii-mei.serbanlaurentiuiulian.workers.dev/";
-const K_TOKEN = "agenti_token", K_CHATS = "agenti_chats", K_ACTIVE = "agenti_active", K_HIST = "agenti_hist";
+const K_TOKEN = "agenti_token", K_CHATS = "agenti_chats", K_ACTIVE = "agenti_active", K_HIST = "agenti_hist", K_PROF = "agenti_profile";
 
 // Sincronizare: lipește aici configurația proiectului tău Firebase
 // (Firebase Console > Project settings > Your apps > Web app > Config).
@@ -575,6 +599,55 @@ function save(){
   if (cur) queuePush(cur);
 }
 
+/* ---------- profil si memorie ---------- */
+let prof = { text: "", memory: [], updated: 0 };
+let profDirty = false;
+function loadProf(){
+  try {
+    const p = JSON.parse(lsGet(K_PROF) || "null");
+    if (p && typeof p === "object")
+      prof = { text: String(p.text || ""), memory: (Array.isArray(p.memory) ? p.memory : []).filter(m => m && m.text), updated: p.updated || 0 };
+  } catch {}
+}
+function saveProf(){
+  prof.updated = Date.now();
+  lsSet(K_PROF, JSON.stringify(prof));
+  queueProfPush();
+}
+function renderMem(){
+  const list = $("memList");
+  list.innerHTML = "";
+  if (!prof.memory.length){
+    const p = document.createElement("p");
+    p.className = "hint"; p.textContent = "Nimic reținut încă.";
+    list.appendChild(p);
+    return;
+  }
+  prof.memory.forEach((m) => {
+    const row = document.createElement("div"); row.className = "mem";
+    const t = document.createElement("span"); t.textContent = m.text;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "memx"; b.dataset.id = m.id; b.setAttribute("aria-label", "Șterge"); b.innerHTML = ICO.del;
+    row.append(t, b);
+    list.appendChild(row);
+  });
+}
+function addMemory(text){
+  const t = (text || "").trim().replace(/\s+/g, " ").slice(0, 300);
+  if (!t) return "empty";
+  if (prof.memory.some(m => m.text.toLowerCase() === t.toLowerCase())) return "dup";
+  if (prof.memory.length >= 50) return "full";
+  prof.memory.push({ id: uid(), text: t });
+  saveProf(); renderMem();
+  return "added";
+}
+function commitProfile(){
+  if (!profDirty) return;
+  profDirty = false;
+  const v = $("profileInput").value.trim().slice(0, 1500);
+  if (v !== prof.text){ prof.text = v; saveProf(); }
+}
+
 /* ---------- pagina de start ---------- */
 function greeting(){
   const h = new Date().getHours();
@@ -693,7 +766,7 @@ function renderHist(){
   box.innerHTML = "";
   hist.forEach((m, i) => {
     const el = addMsg(m, false);
-    if (m.role === "assistant") addActs(el, i === hist.length - 1);
+    if (m.role === "assistant") addActs(el, i === hist.length - 1 && !m.local);
   });
 }
 function scrollEnd(){ scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" }); }
@@ -761,9 +834,46 @@ function regenerate(){
 }
 
 /* ---------- trimitere ---------- */
+const RE_REMEMBER = /^\s*(?:te rog\s+)?(?:(?:ține|tine)\s+minte|reține|retine|memorează|memoreaza)(?:\s+că|\s+ca)?[\s:,\-–]+(.+)$/is;
+
+// urmareste textul care creste, fara sa dea la o parte inceputul raspunsului
+function followBottom(el){
+  const er = el.getBoundingClientRect(), sr = scroller.getBoundingClientRect();
+  const over = er.bottom - (sr.bottom - 12);
+  if (over > 0){
+    const d = Math.min(over, er.top - (sr.top + 8));
+    if (d > 0) scroller.scrollTo({ top: scroller.scrollTop + d, behavior: "instant" });
+  }
+}
+
+// "ține minte că ..." se salveaza direct in memorie, fara apel catre agenti
+function remember(text, fact){
+  fact = fact.trim().replace(/[.\s]+$/, "").slice(0, 300);
+  const res = addMemory(fact);
+  ensureChat();
+  hist.push({ role: "user", content: text });
+  if (!cur.title) cur.title = makeTitle(text);
+  const reply =
+    res === "empty" ? "Ce să țin minte? Scrie ceva după „ține minte că…”." :
+    res === "dup" ? "Era deja în memorie." :
+    res === "full" ? "Memoria e plină (50 de lucruri). Șterge ceva din Setări, la Memorie." :
+    "Am reținut: „" + fact + "”. O găsești în Setări, la Memorie, de unde o poți șterge.";
+  const m = { role: "assistant", content: reply, local: true };
+  hist.push(m);
+  save();
+  if (!document.body.classList.contains("has-chat")) setChat(true);
+  box.querySelectorAll(".act-regen").forEach(x => x.remove());
+  addMsg({ role: "user", content: text }, true);
+  const el = addMsg(m, true);
+  input.value = ""; resize(); sync();
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 async function send(text){
   text = (text || "").trim();
   if (!text || busy) return;
+  const mm = RE_REMEMBER.exec(text);
+  if (mm){ remember(text, mm[1]); return; }
   if (!token){ openSettings(true); return; }
 
   box.querySelectorAll(".err").forEach(e => e.remove());
@@ -788,29 +898,94 @@ async function send(text){
     if (msg) err(msg);
   };
 
+  let agentKey = null, full = "", el = null, raf = 0, follow = true;
+  const stopFollow = () => { follow = false; };
+  scroller.addEventListener("touchstart", stopFollow, { passive: true });
+  scroller.addEventListener("wheel", stopFollow, { passive: true });
+  const bodyEl = () => el.querySelector(".body");
+  const paint = () => { raf = 0; if (!el) return; bodyEl().innerHTML = fmt(full); if (follow) followBottom(el); };
+  const ensureEl = () => {
+    if (el) return;
+    hideTyping(); mark.classList.add("busy");
+    el = addMsg({ role: "assistant", content: "", agent: agentKey }, true);
+    bodyEl().classList.add("streaming");
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const finish = () => {
+    if (raf){ cancelAnimationFrame(raf); raf = 0; }
+    bodyEl().classList.remove("streaming");
+    bodyEl().innerHTML = fmt(full);
+    const m = { role: "assistant", content: full, agent: agentKey };
+    el._m = m; hist.push(m); save();
+    box.querySelectorAll(".act-regen").forEach(x => x.remove());
+    addActs(el, true);
+  };
+
   try {
     const r = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ message: text, history: past }),
+      body: JSON.stringify({ message: text, history: past, stream: true, profile: prof.text, memory: prof.memory.map(m => m.text) }),
       signal: abortCtl.signal
     });
-    const data = await r.json().catch(() => ({}));
-    hideTyping();
-    if (r.status === 401) fail("Parolă greșită. Deschide Setări și introdu-o din nou.");
-    else if (!r.ok || data.error) fail("Eroare: " + (data.error || r.status));
-    else {
-      const m = { role: "assistant", content: data.reply, agent: data.agent };
-      hist.push(m); save();
-      box.querySelectorAll(".act-regen").forEach(x => x.remove());
-      const el = addMsg(m, true, true);
-      flash(data.agent);
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const ct = r.headers.get("content-type") || "";
+
+    if (!r.ok || ct.includes("application/json")){
+      // eroare, sau un Worker mai vechi care raspunde dintr-o bucata
+      const data = await r.json().catch(() => ({}));
+      hideTyping();
+      if (r.status === 401) fail("Parolă greșită. Deschide Setări și introdu-o din nou.");
+      else if (!r.ok || data.error) fail("Eroare: " + (data.error || r.status));
+      else {
+        const m = { role: "assistant", content: data.reply, agent: data.agent };
+        hist.push(m); save();
+        box.querySelectorAll(".act-regen").forEach(x => x.remove());
+        const e2 = addMsg(m, true, true);
+        flash(data.agent);
+        e2.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } else {
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let buf = "", errMsg = null;
+      for (;;){
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0){
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          let ev; try { ev = JSON.parse(line); } catch { continue; }
+          if (ev.t === "agent"){
+            agentKey = AGENTS[ev.agent] ? ev.agent : null;
+            flash(agentKey);
+            const tt = typingEl && typingEl.querySelector(".tt");
+            if (tt && agentKey) tt.textContent = AGENTS[agentKey].name + " lucrează la răspuns…";
+          } else if (ev.t === "d"){
+            ensureEl(); full += ev.x;
+            if (!raf) raf = requestAnimationFrame(paint);
+          } else if (ev.t === "err"){
+            errMsg = ev.m || "eroare necunoscută";
+          }
+        }
+      }
+      if (full){ ensureEl(); finish(); if (errMsg) err("Răspunsul s-a întrerupt: " + errMsg); }
+      else { hideTyping(); fail(errMsg ? "Eroare: " + errMsg : "Nu am primit un răspuns. Încearcă din nou."); }
     }
   } catch (e){
-    hideTyping();
-    fail(e.name === "AbortError" ? null : "Nu m-am putut conecta. Verifică internetul și încearcă din nou.");
+    if (e.name === "AbortError"){
+      if (full){ ensureEl(); finish(); } else { hideTyping(); fail(null); }
+    } else if (full){
+      ensureEl(); finish(); err("Conexiunea s-a întrerupt. Răspunsul de mai sus e incomplet.");
+    } else {
+      hideTyping(); fail("Nu m-am putut conecta. Verifică internetul și încearcă din nou.");
+    }
   } finally {
+    scroller.removeEventListener("touchstart", stopFollow);
+    scroller.removeEventListener("wheel", stopFollow);
+    if (raf) cancelAnimationFrame(raf);
+    hideTyping();
     busy = false; abortCtl = null;
     sendBtn.classList.remove("busy"); sendBtn.setAttribute("aria-label", "Trimite");
     document.body.classList.remove("busy");
@@ -944,16 +1119,20 @@ $("scrim").addEventListener("click", closeSide);
 /* ---------- setari ---------- */
 function openSettings(needToken){
   $("tokenInput").value = token;
+  $("profileInput").value = prof.text;
+  profDirty = false;
+  renderMem();
   $("sheetNote").hidden = !needToken;
   $("sheet").classList.add("open"); $("sheet").setAttribute("aria-hidden", "false");
   if (needToken) setTimeout(() => $("tokenInput").focus(), 400);
 }
 function closeSettings(){
+  if ($("sheet").classList.contains("open")) commitProfile();
   $("sheet").classList.remove("open"); $("sheet").setAttribute("aria-hidden", "true");
   $("tokenInput").blur();
 }
 function exportChats(){
-  const blob = new Blob([JSON.stringify({ exportat: new Date().toISOString(), conversatii: chats }, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ exportat: new Date().toISOString(), profil: prof, conversatii: chats }, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = "conversatii-agenti.json";
   document.body.appendChild(a); a.click(); a.remove();
@@ -969,6 +1148,16 @@ $("saveToken").addEventListener("click", () => {
 });
 $("tokenInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("saveToken").click(); });
 $("exportBtn").addEventListener("click", exportChats);
+$("profileInput").addEventListener("input", () => { profDirty = true; });
+$("profileInput").addEventListener("change", commitProfile);
+$("memAdd").addEventListener("click", () => { if (addMemory($("memInput").value) !== "empty") $("memInput").value = ""; });
+$("memInput").addEventListener("keydown", (e) => { if (e.key === "Enter"){ e.preventDefault(); $("memAdd").click(); } });
+$("memList").addEventListener("click", (e) => {
+  const b = e.target.closest(".memx");
+  if (!b) return;
+  prof.memory = prof.memory.filter(m => m.id !== b.dataset.id);
+  saveProf(); renderMem();
+});
 $("wipeBtn").addEventListener("click", () => {
   if (busy || !confirm("Ștergi toate conversațiile?" + (fbUser ? " Se șterg și din cloud, de pe toate dispozitivele." : "") + " Nu se poate anula.")) return;
   chats.forEach(c => cloudDelete(c.id));
@@ -1000,7 +1189,7 @@ let fb = null, fbUser = null, fbUnsub = null, firstSyncDone = false;
 const pushTimers = {};
 
 function setSync(state, text){
-  const d = $("sdot"); if (d) d.className = "sdot " + state;
+  const d = $("sdot"); if (d) d.className = "sdot " + (state === "err" ? "bad" : state);
   const t = $("syncStatus"); if (t) t.textContent = text;
 }
 function authMsg(text, good){
@@ -1072,6 +1261,15 @@ function applyRemote(snap){
   snap.docChanges().forEach((ch) => {
     const d = ch.doc, id = d.id;
     if (d.metadata && d.metadata.hasPendingWrites) return;
+    if (id === "__profile"){
+      const r = d.data() || {};
+      if (ch.type !== "removed" && (r.updated || 0) > (prof.updated || 0)){
+        prof = { text: r.profile || "", memory: (r.memory || []).filter(m => m && m.text), updated: r.updated };
+        lsSet(K_PROF, JSON.stringify(prof)); renderMem();
+        if (!$("sheet").classList.contains("open") || !profDirty) $("profileInput").value = prof.text;
+      }
+      return;
+    }
     if (ch.type === "removed"){
       const i = chats.findIndex(c => c.id === id);
       if (i >= 0){ if (cur && cur.id === id) curGone = true; chats.splice(i, 1); changed = true; }
@@ -1094,6 +1292,7 @@ function applyRemote(snap){
     firstSyncDone = true;
     const remote = new Map(snap.docs.map(d => [d.id, (d.data() || {}).updated || 0]));
     chats.forEach(c => { if (!remote.has(c.id) || c.updated > remote.get(c.id)) queuePush(c); });
+    if (prof.updated > (remote.get("__profile") || 0)) queueProfPush();
   }
   if (changed){
     saveChats();
@@ -1116,13 +1315,26 @@ function queuePush(c){
 async function pushChat(c){
   if (!fb || !fbUser) return;
   try {
-    const msgs = c.msgs.slice(-60).map(m => ({ role: m.role, content: m.content, ...(m.agent ? { agent: m.agent } : {}) }));
+    const msgs = c.msgs.slice(-60).map(m => ({ role: m.role, content: m.content, ...(m.agent ? { agent: m.agent } : {}), ...(m.local ? { local: true } : {}) }));
     while (JSON.stringify(msgs).length > 800000 && msgs.length > 2) msgs.shift();
     await fb.F.setDoc(fb.F.doc(fb.db, "users", fbUser.uid, "chats", c.id),
       { title: c.title || "", created: c.created || c.updated, updated: c.updated, msgs });
   } catch (e){
     setSync("err", "Nu s-a putut sincroniza. Reîncerc la următoarea salvare.");
   }
+}
+let profTimer = 0;
+function queueProfPush(){
+  if (!fb || !fbUser) return;
+  clearTimeout(profTimer);
+  profTimer = setTimeout(pushProf, 800);
+}
+async function pushProf(){
+  if (!fb || !fbUser) return;
+  try {
+    await fb.F.setDoc(fb.F.doc(fb.db, "users", fbUser.uid, "chats", "__profile"),
+      { kind: "profile", profile: prof.text, memory: prof.memory, updated: prof.updated });
+  } catch {}
 }
 async function cloudDelete(id){
   if (!fb || !fbUser) return;
@@ -1155,6 +1367,7 @@ window.addEventListener("offline", () => { if (fbUser) setSync("sync", "Offline,
 
 /* ---------- pornire ---------- */
 loadChats();
+loadProf();
 buildHero();
 renderHist();
 renderList();
