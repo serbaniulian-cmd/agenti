@@ -280,14 +280,23 @@ textarea::placeholder{color:var(--muted)}
 .sheet label{display:block;font:600 14px var(--display);margin-bottom:4px}
 .hint{color:var(--muted);font-size:13.5px;margin-bottom:10px}
 .sheet-note{color:var(--research);font-size:14px;margin-bottom:10px}
-#tokenInput{width:100%;font:16px var(--body);color:var(--mist);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:14px;padding:12px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
-#tokenInput:focus{border-color:rgba(163,146,255,.6);box-shadow:0 0 0 4px rgba(163,146,255,.12)}
+.sheet input{width:100%;margin-bottom:8px;font:16px var(--body);color:var(--mist);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:14px;padding:12px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.sheet input:focus{border-color:rgba(163,146,255,.6);box-shadow:0 0 0 4px rgba(163,146,255,.12)}
 .btn{display:block;width:100%;font:600 15px var(--display);padding:12px 14px;border-radius:14px;cursor:pointer;color:var(--mist);background:rgba(255,255,255,.05);border:1px solid var(--line);margin-top:10px;transition:transform .3s var(--spring),background .2s}
 .btn:active{transform:scale(.97)}
 .btn.primary{background:linear-gradient(135deg,#5b50e8,#7a63f5);border-color:transparent;color:#fff}
 .btn.danger{color:#ff9a9a;border-color:rgba(255,120,120,.3)}
 .btn.ghost{background:none;border-color:transparent;color:var(--muted)}
 .sheet hr{border:0;border-top:1px solid var(--line);margin:18px 0 4px}
+.sec{font:700 16px/1.2 var(--display);margin:6px 0 4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two .btn{margin-top:2px}
+.sheet-err{color:#ff9a9a;font-size:14px;margin:2px 0 6px}
+.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:7px;vertical-align:middle;transition:background .3s,box-shadow .3s}
+.sdot.ok{background:var(--planner);box-shadow:0 0 8px var(--planner)}
+.sdot.sync{background:var(--finance);animation:blink 1.2s ease-in-out infinite}
+.sdot.err{background:#ff7d7d}
+@keyframes blink{50%{opacity:.35}}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
@@ -311,7 +320,7 @@ textarea::placeholder{color:var(--muted)}
   <input id="search" type="search" placeholder="Caută în conversații" aria-label="Caută în conversații" hidden>
   <div id="chatList"></div>
   <div class="side-foot">
-    <p class="side-note">Conversațiile se salvează doar pe acest dispozitiv.</p>
+    <p class="side-note"><i class="sdot" id="sdot"></i><span id="syncStatus">Conversațiile se salvează doar pe acest dispozitiv.</span></p>
     <button class="ibtn" id="settingsBtn" type="button" aria-label="Setări">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
     </button>
@@ -371,6 +380,23 @@ textarea::placeholder{color:var(--muted)}
     <input id="tokenInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
     <button class="btn primary" id="saveToken" type="button">Salvează parola</button>
     <hr>
+    <h3 class="sec">Sincronizare între dispozitive</h3>
+    <p class="hint" id="syncHint"></p>
+    <div id="syncForm">
+      <input id="syncEmail" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" spellcheck="false">
+      <input id="syncPass" type="password" placeholder="Parolă (minim 6 caractere)" autocomplete="current-password">
+      <p class="sheet-err" id="authMsg" hidden></p>
+      <div class="two">
+        <button class="btn primary" id="signInBtn" type="button">Conectează-te</button>
+        <button class="btn" id="signUpBtn" type="button">Cont nou</button>
+      </div>
+      <button class="btn ghost" id="resetBtn" type="button">Ai uitat parola?</button>
+    </div>
+    <div id="syncOn" hidden>
+      <p id="syncUser" class="hint"></p>
+      <button class="btn" id="signOutBtn" type="button">Deconectează</button>
+    </div>
+    <hr>
     <button class="btn" id="exportBtn" type="button">Exportă conversațiile</button>
     <button class="btn danger" id="wipeBtn" type="button">Șterge toate conversațiile</button>
     <button class="btn ghost" id="closeSheet" type="button">Închide</button>
@@ -387,6 +413,18 @@ textarea::placeholder{color:var(--muted)}
 <script>
 const API_URL = "https://agentii-mei.serbanlaurentiuiulian.workers.dev/";
 const K_TOKEN = "agenti_token", K_CHATS = "agenti_chats", K_ACTIVE = "agenti_active", K_HIST = "agenti_hist";
+
+// Sincronizare: lipește aici configurația proiectului tău Firebase
+// (Firebase Console > Project settings > Your apps > Web app > Config).
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDTelr7sdeUvM2-FgEHIKiwIpVHd3C6Ddw",
+  authDomain: "agentii-mei.firebaseapp.com",
+  projectId: "agentii-mei",
+  storageBucket: "agentii-mei.firebasestorage.app",
+  messagingSenderId: "940795895227",
+  appId: "1:940795895227:web:24e87920827bac1679789e"
+};
+const SYNC_ON = !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
 
 const AGENTS = {
   research: { name: "Cercetare", color: "#43d6c8", rgb: "67,214,200", does: "caută pe web și rezumă",
@@ -534,6 +572,7 @@ function save(){
   saveChats();
   lsSet(K_ACTIVE, cur ? cur.id : "");
   renderList();
+  if (cur) queuePush(cur);
 }
 
 /* ---------- pagina de start ---------- */
@@ -743,7 +782,7 @@ async function send(text){
 
   const fail = (msg) => {
     hist.pop(); u.remove();
-    if (!hist.length && cur){ chats = chats.filter(c => c !== cur); cur = null; }
+    if (!hist.length && cur){ cloudDelete(cur.id); chats = chats.filter(c => c !== cur); cur = null; }
     save();
     input.value = text; resize(); sync();
     if (msg) err(msg);
@@ -871,7 +910,7 @@ function renameChat(id){
   const c = chats.find(x => x.id === id);
   if (!c) return;
   const t = prompt("Nume nou pentru conversație:", c.title);
-  if (t && t.trim()){ c.title = t.trim().slice(0, 60); saveChats(); renderList(); }
+  if (t && t.trim()){ c.title = t.trim().slice(0, 60); c.updated = Date.now(); saveChats(); renderList(); queuePush(c); }
 }
 
 function deleteChat(id){
@@ -879,6 +918,7 @@ function deleteChat(id){
   const c = chats.find(x => x.id === id);
   if (!c || !confirm("Ștergi conversația „" + (c.title || "fără nume") + "”?")) return;
   const wasActive = cur === c;
+  cloudDelete(c.id);
   chats = chats.filter(x => x !== c);
   if (wasActive){
     cur = null; hist = [];
@@ -930,7 +970,8 @@ $("saveToken").addEventListener("click", () => {
 $("tokenInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("saveToken").click(); });
 $("exportBtn").addEventListener("click", exportChats);
 $("wipeBtn").addEventListener("click", () => {
-  if (busy || !confirm("Ștergi toate conversațiile? Nu se poate anula.")) return;
+  if (busy || !confirm("Ștergi toate conversațiile?" + (fbUser ? " Se șterg și din cloud, de pe toate dispozitivele." : "") + " Nu se poate anula.")) return;
+  chats.forEach(c => cloudDelete(c.id));
   chats = []; cur = null; hist = [];
   save(); closeSettings();
   dissolve(() => { box.innerHTML = ""; setChat(false); });
@@ -953,11 +994,171 @@ document.addEventListener("touchend", (e) => {
   swipe = null;
 }, { passive: true });
 
+/* ---------- sincronizare Firebase (email + parola, Firestore) ---------- */
+const FB_BASE = "https://www.gstatic.com/firebasejs/10.14.1/";
+let fb = null, fbUser = null, fbUnsub = null, firstSyncDone = false;
+const pushTimers = {};
+
+function setSync(state, text){
+  const d = $("sdot"); if (d) d.className = "sdot " + state;
+  const t = $("syncStatus"); if (t) t.textContent = text;
+}
+function authMsg(text, good){
+  const el = $("authMsg");
+  el.hidden = !text; el.textContent = text || ""; el.style.color = good ? "var(--research)" : "";
+}
+function authError(code){
+  if (["auth/invalid-credential", "auth/wrong-password", "auth/user-not-found", "auth/invalid-login-credentials"].includes(code)) return "Email sau parolă greșite.";
+  const m = {
+    "auth/email-already-in-use": "Există deja un cont cu acest email. Apasă Conectează-te.",
+    "auth/weak-password": "Parola e prea slabă. Folosește minim 6 caractere.",
+    "auth/invalid-email": "Emailul nu pare valid.",
+    "auth/operation-not-allowed": "Autentificarea cu email nu e activată în Firebase.",
+    "auth/network-request-failed": "Fără conexiune la internet.",
+    "auth/too-many-requests": "Prea multe încercări. Așteaptă puțin și încearcă din nou."
+  };
+  return m[code] || "Eroare: " + code;
+}
+function renderSyncUI(){
+  const form = $("syncForm"), on = $("syncOn"), hint = $("syncHint");
+  if (!SYNC_ON){
+    form.hidden = true; on.hidden = true;
+    hint.textContent = "Sincronizarea nu e configurată încă. Completează FIREBASE_CONFIG în agenti.html.";
+    setSync("off", "Conversațiile se salvează doar pe acest dispozitiv.");
+    return;
+  }
+  if (fbUser){
+    form.hidden = true; on.hidden = false;
+    $("syncUser").textContent = "Conectat ca " + fbUser.email + ".";
+    hint.textContent = "Conversațiile se sincronizează între toate dispozitivele conectate la acest cont.";
+  } else {
+    form.hidden = false; on.hidden = true;
+    hint.textContent = "Conectează-te pe fiecare dispozitiv cu același email și aceeași parolă ca să vezi aceleași conversații.";
+    setSync("off", fb ? "Neconectat. Conversațiile sunt doar pe acest dispozitiv." : "Se încarcă sincronizarea…");
+  }
+}
+async function initSync(){
+  renderSyncUI();
+  if (!SYNC_ON) return;
+  try {
+    const [appM, authM, fsM] = await Promise.all([
+      import(FB_BASE + "firebase-app.js"), import(FB_BASE + "firebase-auth.js"), import(FB_BASE + "firebase-firestore.js")
+    ]);
+    const app = appM.initializeApp(FIREBASE_CONFIG);
+    fb = { A: authM, F: fsM, auth: authM.getAuth(app), db: fsM.getFirestore(app) };
+    authM.onAuthStateChanged(fb.auth, (u) => {
+      fbUser = u;
+      if (u) startListening(); else stopListening();
+      renderSyncUI();
+    });
+  } catch (e){
+    setSync("err", "Sincronizarea nu a putut porni. Verifică internetul.");
+  }
+}
+function stopListening(){
+  if (fbUnsub){ fbUnsub(); fbUnsub = null; }
+  Object.keys(pushTimers).forEach(k => { clearTimeout(pushTimers[k]); delete pushTimers[k]; });
+}
+function startListening(){
+  stopListening(); firstSyncDone = false;
+  setSync("sync", "Se sincronizează…");
+  const col = fb.F.collection(fb.db, "users", fbUser.uid, "chats");
+  fbUnsub = fb.F.onSnapshot(col, { includeMetadataChanges: true }, applyRemote, (e) => {
+    setSync("err", e && e.code === "permission-denied" ? "Regulile Firestore blochează accesul." : "Eroare de sincronizare.");
+  });
+}
+function applyRemote(snap){
+  let changed = false, curGone = false, curNew = false;
+  snap.docChanges().forEach((ch) => {
+    const d = ch.doc, id = d.id;
+    if (d.metadata && d.metadata.hasPendingWrites) return;
+    if (ch.type === "removed"){
+      const i = chats.findIndex(c => c.id === id);
+      if (i >= 0){ if (cur && cur.id === id) curGone = true; chats.splice(i, 1); changed = true; }
+      return;
+    }
+    const r = d.data() || {};
+    const msgs = (r.msgs || []).map(m => ({ ...m, agent: m.agent || LABEL_TO_KEY[m.label] }));
+    const local = chats.find(c => c.id === id);
+    if (!local){
+      chats.push({ id, title: r.title || "", created: r.created || r.updated || 0, updated: r.updated || 0, msgs });
+      changed = true;
+    } else if ((r.updated || 0) > (local.updated || 0)){
+      if (busy && cur === local) return;
+      local.title = r.title || ""; local.updated = r.updated; local.msgs = msgs;
+      changed = true;
+      if (cur === local) curNew = true;
+    }
+  });
+  if (!firstSyncDone && !snap.metadata.fromCache){
+    firstSyncDone = true;
+    const remote = new Map(snap.docs.map(d => [d.id, (d.data() || {}).updated || 0]));
+    chats.forEach(c => { if (!remote.has(c.id) || c.updated > remote.get(c.id)) queuePush(c); });
+  }
+  if (changed){
+    saveChats();
+    if (curGone && !busy){ cur = null; hist = []; lsSet(K_ACTIVE, ""); box.innerHTML = ""; setChat(false); }
+    else if (curNew && !busy && !curGone){
+      hist = cur.msgs; renderHist();
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
+    }
+    renderList();
+  }
+  if (!snap.metadata.hasPendingWrites && !snap.metadata.fromCache) setSync("ok", "Sincronizat");
+  else setSync("sync", navigator.onLine ? "Se sincronizează…" : "Offline, se sincronizează la reconectare");
+}
+function queuePush(c){
+  if (!fb || !fbUser || !c) return;
+  clearTimeout(pushTimers[c.id]);
+  setSync("sync", "Se sincronizează…");
+  pushTimers[c.id] = setTimeout(() => pushChat(c), 700);
+}
+async function pushChat(c){
+  if (!fb || !fbUser) return;
+  try {
+    const msgs = c.msgs.slice(-60).map(m => ({ role: m.role, content: m.content, ...(m.agent ? { agent: m.agent } : {}) }));
+    while (JSON.stringify(msgs).length > 800000 && msgs.length > 2) msgs.shift();
+    await fb.F.setDoc(fb.F.doc(fb.db, "users", fbUser.uid, "chats", c.id),
+      { title: c.title || "", created: c.created || c.updated, updated: c.updated, msgs });
+  } catch (e){
+    setSync("err", "Nu s-a putut sincroniza. Reîncerc la următoarea salvare.");
+  }
+}
+async function cloudDelete(id){
+  if (!fb || !fbUser) return;
+  clearTimeout(pushTimers[id]);
+  try { await fb.F.deleteDoc(fb.F.doc(fb.db, "users", fbUser.uid, "chats", id)); } catch {}
+}
+async function doAuth(create){
+  if (!fb){ authMsg("Sincronizarea se încarcă. Încearcă din nou într-o clipă."); return; }
+  const email = $("syncEmail").value.trim(), pass = $("syncPass").value;
+  if (!email || pass.length < 6){ authMsg("Scrie emailul și o parolă de minim 6 caractere."); return; }
+  try {
+    if (create) await fb.A.createUserWithEmailAndPassword(fb.auth, email, pass);
+    else await fb.A.signInWithEmailAndPassword(fb.auth, email, pass);
+    $("syncPass").value = ""; authMsg("");
+  } catch (e){ authMsg(authError(e.code)); }
+}
+async function resetPass(){
+  const email = $("syncEmail").value.trim();
+  if (!fb || !email){ authMsg("Scrie emailul mai sus, apoi apasă din nou."); return; }
+  try { await fb.A.sendPasswordResetEmail(fb.auth, email); authMsg("Ți-am trimis un email pentru resetarea parolei.", true); }
+  catch (e){ authMsg(authError(e.code)); }
+}
+$("signInBtn").addEventListener("click", () => doAuth(false));
+$("signUpBtn").addEventListener("click", () => doAuth(true));
+$("resetBtn").addEventListener("click", resetPass);
+$("signOutBtn").addEventListener("click", () => { if (fb) fb.A.signOut(fb.auth); });
+$("syncPass").addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth(false); });
+window.addEventListener("online", () => { if (fbUser) setSync("sync", "Se sincronizează…"); });
+window.addEventListener("offline", () => { if (fbUser) setSync("sync", "Offline, se sincronizează la reconectare"); });
+
 /* ---------- pornire ---------- */
 loadChats();
 buildHero();
 renderHist();
 renderList();
+initSync();
 if (hist.length){
   document.body.classList.add("has-chat");
   requestAnimationFrame(() => scroller.scrollTo({ top: scroller.scrollHeight, behavior: "instant" }));
