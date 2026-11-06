@@ -20,7 +20,7 @@
   color-scheme:dark;
   --midnight:#0c0e22; --dusk:#151836; --mist:#e8eaff; --muted:#8f93bd; --lilac:#c9c2ff;
   --line:rgba(160,170,255,.16);
-  --research:#43d6c8; --code:#a392ff; --finance:#ffb958; --planner:#b6e35a; --writer:#ff7d9c;
+  --research:#43d6c8; --code:#a392ff; --finance:#ffb958; --planner:#b6e35a; --writer:#ff7d9c; --specialist:#6fe0ff;
   --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
   --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
   --spring:cubic-bezier(.2,.9,.3,1.15);
@@ -31,6 +31,7 @@
 .ag-finance{--ac:var(--finance);--ac-rgb:255,185,88}
 .ag-planner{--ac:var(--planner);--ac-rgb:182,227,90}
 .ag-writer{--ac:var(--writer);--ac-rgb:255,125,156}
+.ag-specialist{--ac:var(--specialist);--ac-rgb:111,224,255}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
@@ -423,6 +424,7 @@ textarea::placeholder{color:var(--muted)}
     <hr>
     <button class="btn" id="exportBtn" type="button">Exportă conversațiile</button>
     <button class="btn danger" id="wipeBtn" type="button">Șterge toate conversațiile</button>
+    <p class="hint" style="margin-top:14px">Agenții din categoria Specialiști folosesc colecția „Agency Agents” (github.com/msitarzewski/agency-agents, licență MIT).</p>
     <button class="btn ghost" id="closeSheet" type="button">Închide</button>
   </div>
 </div>
@@ -465,7 +467,10 @@ const AGENTS = {
     icon: '<rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4M16 3v4M4 10h16M9 15l2 2 4-4"/>' },
   writer: { name: "Scriitor", color: "#ff7d9c", rgb: "255,125,156", does: "emailuri, texte, traduceri",
     ask: "Scrie un email politicos prin care amân o întâlnire",
-    icon: '<path d="M4 20l4-1 11-11a2.1 2.1 0 00-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/>' }
+    icon: '<path d="M4 20l4-1 11-11a2.1 2.1 0 00-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/>' },
+  specialist: { name: "Specialiști", color: "#6fe0ff", rgb: "111,224,255", does: "experți pe orice alt domeniu",
+    ask: "Fă-mi un plan de SEO pentru un site nou",
+    icon: '<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.4l-5.4 3.1 1.2-6L3.3 9.3l6.1-.7z"/>' }
 };
 const KEYS = Object.keys(AGENTS);
 const LABEL_TO_KEY = { "Cercetare": "research", "Cod": "code", "Finante": "finance", "Finanțe": "finance", "Planificator": "planner", "Scriitor": "writer" };
@@ -662,7 +667,7 @@ function hot(k, on){
 function stageSvg(){
   const CX = 160, CY = 158, R = 106, NR = 24;
   const pos = KEYS.map((k, i) => {
-    const a = (-90 + i * 72) * Math.PI / 180;
+    const a = (-90 + i * 360 / KEYS.length) * Math.PI / 180;
     return { k, x: +(CX + R * Math.cos(a)).toFixed(1), y: +(CY + R * Math.sin(a)).toFixed(1) };
   });
   const grads = KEYS.map(k => `<radialGradient id="g-${k}"><stop offset="0" stop-color="${AGENTS[k].color}" stop-opacity=".42"/><stop offset="1" stop-color="${AGENTS[k].color}" stop-opacity="0"/></radialGradient>`).join("");
@@ -682,7 +687,7 @@ function stageSvg(){
       `</g></g></g></g>`;
   }).join("");
   const labels = pos.map((p, i) => `<text class="lbl" x="${p.x}" y="${i === 0 ? (p.y - NR - 9).toFixed(1) : (p.y + NR + 17).toFixed(1)}" text-anchor="middle">${AGENTS[p.k].name}</text>`).join("");
-  return `<svg class="stage" viewBox="0 0 320 292" role="group" aria-label="Orchestratorul în centru, conectat la cei cinci agenți">` +
+  return `<svg class="stage" viewBox="0 0 320 320" role="group" aria-label="Orchestratorul în centru, conectat la cei șase agenți">` +
     `<defs><radialGradient id="gCore"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#c9c2ff"/><stop offset="1" stop-color="#7a63f5"/></radialGradient>` +
     `<radialGradient id="gGlow"><stop offset="0" stop-color="#a392ff" stop-opacity=".6"/><stop offset="1" stop-color="#a392ff" stop-opacity="0"/></radialGradient>${grads}</defs>` +
     `<circle class="hring" cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(201,194,255,.2)" stroke-width="1" stroke-dasharray="2 6"/>` +
@@ -756,7 +761,8 @@ function addMsg(m, animate, rev){
   const k = m.role === "assistant" && AGENTS[m.agent] ? m.agent : null;
   d.className = "msg " + m.role + (k ? " ag-" + k : "") + (animate ? " enter" : "");
   d._m = m;
-  d.innerHTML = (k ? '<div class="badge">' + iconSvg(k, 15) + AGENTS[k].name + "</div>" : "") + '<div class="body"></div>';
+  const spec = k === "specialist" && m.label;
+  d.innerHTML = (k ? '<div class="badge">' + (spec && m.emoji ? esc(m.emoji) + " " : iconSvg(k, 15)) + (spec ? esc(m.label) : AGENTS[k].name) + "</div>" : "") + '<div class="body"></div>';
   box.appendChild(d);
   if (rev && m.role === "assistant") reveal(d, m.content).then(() => addActs(d, true));
   else d.querySelector(".body").innerHTML = fmt(m.content);
@@ -898,7 +904,8 @@ async function send(text){
     if (msg) err(msg);
   };
 
-  let agentKey = null, full = "", el = null, raf = 0, follow = true;
+  let agentKey = null, agentLabel = "", agentEmoji = "", full = "", el = null, raf = 0, follow = true;
+  const specInfo = () => agentKey === "specialist" ? { label: agentLabel, emoji: agentEmoji } : {};
   const stopFollow = () => { follow = false; };
   scroller.addEventListener("touchstart", stopFollow, { passive: true });
   scroller.addEventListener("wheel", stopFollow, { passive: true });
@@ -907,7 +914,7 @@ async function send(text){
   const ensureEl = () => {
     if (el) return;
     hideTyping(); mark.classList.add("busy");
-    el = addMsg({ role: "assistant", content: "", agent: agentKey }, true);
+    el = addMsg({ role: "assistant", content: "", agent: agentKey, ...specInfo() }, true);
     bodyEl().classList.add("streaming");
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -915,7 +922,7 @@ async function send(text){
     if (raf){ cancelAnimationFrame(raf); raf = 0; }
     bodyEl().classList.remove("streaming");
     bodyEl().innerHTML = fmt(full);
-    const m = { role: "assistant", content: full, agent: agentKey };
+    const m = { role: "assistant", content: full, agent: agentKey, ...specInfo() };
     el._m = m; hist.push(m); save();
     box.querySelectorAll(".act-regen").forEach(x => x.remove());
     addActs(el, true);
@@ -937,7 +944,7 @@ async function send(text){
       if (r.status === 401) fail("Parolă greșită. Deschide Setări și introdu-o din nou.");
       else if (!r.ok || data.error) fail("Eroare: " + (data.error || r.status));
       else {
-        const m = { role: "assistant", content: data.reply, agent: data.agent };
+        const m = { role: "assistant", content: data.reply, agent: data.agent, ...(data.agent === "specialist" ? { label: data.label, emoji: data.emoji } : {}) };
         hist.push(m); save();
         box.querySelectorAll(".act-regen").forEach(x => x.remove());
         const e2 = addMsg(m, true, true);
@@ -959,9 +966,10 @@ async function send(text){
           let ev; try { ev = JSON.parse(line); } catch { continue; }
           if (ev.t === "agent"){
             agentKey = AGENTS[ev.agent] ? ev.agent : null;
+            agentLabel = ev.label || ""; agentEmoji = ev.emoji || "";
             flash(agentKey);
             const tt = typingEl && typingEl.querySelector(".tt");
-            if (tt && agentKey) tt.textContent = AGENTS[agentKey].name + " lucrează la răspuns…";
+            if (tt && agentKey) tt.textContent = (agentKey === "specialist" && agentLabel ? agentLabel : AGENTS[agentKey].name) + " lucrează la răspuns…";
           } else if (ev.t === "d"){
             ensureEl(); full += ev.x;
             if (!raf) raf = requestAnimationFrame(paint);
@@ -1315,7 +1323,7 @@ function queuePush(c){
 async function pushChat(c){
   if (!fb || !fbUser) return;
   try {
-    const msgs = c.msgs.slice(-60).map(m => ({ role: m.role, content: m.content, ...(m.agent ? { agent: m.agent } : {}), ...(m.local ? { local: true } : {}) }));
+    const msgs = c.msgs.slice(-60).map(m => ({ role: m.role, content: m.content, ...(m.agent ? { agent: m.agent } : {}), ...(m.label ? { label: m.label } : {}), ...(m.emoji ? { emoji: m.emoji } : {}), ...(m.local ? { local: true } : {}) }));
     while (JSON.stringify(msgs).length > 800000 && msgs.length > 2) msgs.shift();
     await fb.F.setDoc(fb.F.doc(fb.db, "users", fbUser.uid, "chats", c.id),
       { title: c.title || "", created: c.created || c.updated, updated: c.updated, msgs });
