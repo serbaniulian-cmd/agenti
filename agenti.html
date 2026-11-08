@@ -207,7 +207,7 @@ async function send(over, overPics){
   ctl = new AbortController(); let err = "";
   try {
     const r = await fetch(API, {method:"POST", headers:{"Content-Type":"application/json", Authorization:"Bearer " + token}, body:JSON.stringify({message:t, history:past, stream:true, agent, images:mine.map(p => ({type:p.t, data:p.d}))}), signal:ctl.signal});
-    if (!r.ok || (r.headers.get("content-type") || "").includes("json")){
+    if (!r.ok || (r.headers.get("content-type") || "").startsWith("application/json")){
       const d = await r.json().catch(() => ({}));
       throw new Error(r.status === 401 ? "Parolă greșită. Deschide ⚙︎ și introdu-o din nou." : (d.error || "Eroare " + r.status));
     }
