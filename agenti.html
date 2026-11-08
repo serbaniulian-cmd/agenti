@@ -41,7 +41,7 @@ main{position:relative;z-index:1;flex:1;overflow-y:auto;padding:16px 14px 8px;-w
 .tw{overflow-x:auto;margin:.7em 0}table{border-collapse:collapse;font-size:14px}th,td{padding:6px 11px;border:1px solid rgba(255,255,255,.16);text-align:left}th{background:rgba(255,255,255,.08)}
 .dots i{display:inline-block;width:7px;height:7px;margin:0 2px;border-radius:50%;background:var(--mut);animation:dot 1.1s infinite}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
 @keyframes dot{50%{transform:translateY(-5px);opacity:.4}}
-.live .b>*:last-child::after{content:"▍";color:var(--ac2);animation:dot 1s infinite}
+.live .b>*:not(span):last-child::after{content:"▍";color:var(--ac2);animation:dot 1s infinite}
 .cp,.act{margin:5px 0 0 6px;font-size:12.5px;color:var(--mut);padding:3px 8px;border-radius:10px}.cp:hover,.act:hover{background:rgba(255,255,255,.08)}.u .act{display:block;margin-left:auto}
 .hero{text-align:center;padding:12vh 10px 0}.hero .big{font-size:58px;line-height:1;filter:drop-shadow(0 8px 24px rgba(139,123,255,.6))}
 .hero h1{margin:14px 0 6px;font-size:28px;letter-spacing:-.02em}.hero p{margin:0 auto 18px;max-width:340px;color:var(--mut)}
@@ -219,6 +219,7 @@ async function send(over, overPics){
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line) continue;
         let e; try { e = JSON.parse(line); } catch { continue; }
         if (e.t === "d"){ if (!m.c) draw(); m.c += e.x; if (!raf) raf = requestAnimationFrame(() => { raf = 0; paint(); }); }
+        else if (e.t === "s" && !m.c){ const b = document.querySelector(".m.a.live .b"); if (b) b.innerHTML = '<span class="orb"></span> <span style="color:var(--mut)">Caut pe web…</span>'; }
         else if (e.t === "err") throw new Error(e.m);
       }
     }
